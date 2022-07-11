@@ -12,7 +12,6 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 import com.template.R
-import com.template.toast
 import okhttp3.*
 import java.io.IOException
 import java.util.*
@@ -63,7 +62,11 @@ class LoadingActivity : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                toast("Request to database was failed")
+                val intentOnError = Intent(
+                    this@LoadingActivity,
+                    MainActivity::class.java
+                )
+                startActivity(intentOnError)
             }
 
             override fun getLifecycle(): Lifecycle = lifecycleReg
@@ -88,9 +91,9 @@ class LoadingActivity : AppCompatActivity() {
             .header("User-Agent", userAgent)
             .build()
 
-       client.newCall(request).enqueue(object : Callback {
+        client.newCall(request).enqueue(object : Callback {
 
-           override fun onResponse(call: Call, response: Response) {
+            override fun onResponse(call: Call, response: Response) {
                 client.newCall(request).execute()
                     .use {
                         webLink = it
@@ -102,8 +105,10 @@ class LoadingActivity : AppCompatActivity() {
                         )
 
                         val prefs =
-                            getSharedPreferences(resources.getString(R.string.app_name),
-                                Context.MODE_PRIVATE)
+                            getSharedPreferences(
+                                resources.getString(R.string.app_name),
+                                Context.MODE_PRIVATE
+                            )
                         val editor = prefs.edit()
 
                         editor.putString("sURL", webLink)
@@ -117,17 +122,17 @@ class LoadingActivity : AppCompatActivity() {
                 startActivity(intentWeb)
             }
 
-           override fun onFailure(call: Call, e: IOException) {
-               val intentOnError = Intent(
-                   this@LoadingActivity,
-                   MainActivity::class.java
-               )
-               startActivity(intentOnError)
-           }
-       })
+            override fun onFailure(call: Call, e: IOException) {
+                val intentOnError = Intent(
+                    this@LoadingActivity,
+                    MainActivity::class.java
+                )
+                startActivity(intentOnError)
+            }
+        })
     }
 
-   /* override fun onSaveInstanceState(outState: Bundle) {
+    override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(COUNT_KEY, count)
     }
@@ -140,6 +145,6 @@ class LoadingActivity : AppCompatActivity() {
     companion object {
         const val COUNT_KEY = "COUNT_KEY"
         private var count = 1
-    }*/
+    }
 }
 

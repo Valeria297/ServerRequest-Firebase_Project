@@ -52,7 +52,7 @@ class WebActivity : AppCompatActivity() {
         return true
     }
 
-   /* override fun onSaveInstanceState(outState: Bundle) {
+    override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
         outState.putInt(COUNT_KEY, count)
     }
@@ -65,5 +65,5 @@ class WebActivity : AppCompatActivity() {
     companion object {
         const val COUNT_KEY = "COUNT_KEY"
         private var count = 3
-    }*/
+    }
 }
