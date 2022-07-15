@@ -42,6 +42,10 @@ class LoadingActivity : AppCompatActivity() {
         val timeZone = TimeZone.getDefault().id
 
         holder.observe(this) {
+            if ( it == null) {
+                startIntentError()
+            }
+
             val serverUrl =
                 "$it/?packageid=$packName&userid=$userId&getz=$timeZone" +
                         "&getr=utm_source=google-play&utm_medium=organic"
@@ -62,11 +66,7 @@ class LoadingActivity : AppCompatActivity() {
             }
 
             override fun onCancelled(error: DatabaseError) {
-                val intentOnError = Intent(
-                    this@LoadingActivity,
-                    MainActivity::class.java
-                )
-                startActivity(intentOnError)
+                startIntentError()
             }
 
             override fun getLifecycle(): Lifecycle = lifecycleReg
@@ -123,13 +123,17 @@ class LoadingActivity : AppCompatActivity() {
             }
 
             override fun onFailure(call: Call, e: IOException) {
-                val intentOnError = Intent(
-                    this@LoadingActivity,
-                    MainActivity::class.java
-                )
-                startActivity(intentOnError)
+                startIntentError()
             }
         })
+    }
+
+    private fun startIntentError() {
+        val intentOnError = Intent(
+            this@LoadingActivity,
+            MainActivity::class.java
+        )
+        startActivity(intentOnError)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
