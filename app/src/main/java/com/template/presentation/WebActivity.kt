@@ -2,9 +2,12 @@ package com.template.presentation
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import android.view.WindowInsets
+import android.view.WindowManager
 import android.webkit.CookieManager
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +21,16 @@ class WebActivity : AppCompatActivity() {
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        @Suppress("DEPRECATION")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.hide(WindowInsets.Type.statusBars())
+        } else {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
+        }
 
         binding = ActivityWebBinding.inflate(layoutInflater)
         setContentView(binding.root)

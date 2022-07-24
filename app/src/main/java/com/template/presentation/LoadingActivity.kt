@@ -2,8 +2,13 @@ package com.template.presentation
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.view.WindowInsets
+import android.view.WindowManager
 import android.webkit.WebView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.*
@@ -31,21 +36,50 @@ class LoadingActivity : AppCompatActivity() {
 
     private val lifecycleReg: LifecycleRegistry = LifecycleRegistry(this)
 
+    private val isUrlReal = MutableLiveData<Boolean>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_loading)
 
-        firebaseReq()
+        @Suppress("DEPRECATION")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            window.insetsController?.hide(WindowInsets.Type.statusBars())
+        } else {
+            window.setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+            )
+        }
 
+        if (checkInternet()) {
+            if (checkPrefs()) {
+                when (getFromPrefs()) {
+                    ERR -> startIntentError()
+                    else -> startWeb()
+                }
+            } else {
+                firebaseReq()
+                init()
+                isUrlReal.observe(this) {
+                    if (it) {
+                        startWeb()
+                    } else {
+                        startIntentError()
+                    }
+                }
+            }
+        } else {
+            startIntentError()
+        }
+    }
+
+    private fun init() {
         val packName = applicationContext.packageName
         val userId = UUID.randomUUID()
         val timeZone = TimeZone.getDefault().id
 
         holder.observe(this) {
-            if ( it == null) {
-                startIntentError()
-            }
-
             val serverUrl =
                 "$it/?packageid=$packName&userid=$userId&getz=$timeZone" +
                         "&getr=utm_source=google-play&utm_medium=organic"
@@ -61,12 +95,18 @@ class LoadingActivity : AppCompatActivity() {
 
         ref.addValueEventListener(object : ValueEventListener, LifecycleOwner {
             override fun onDataChange(snapshot: DataSnapshot) {
-                temp = snapshot.child("link").value.toString()
-                holder.value = temp
+                if (snapshot.exists()) {
+                    temp = snapshot.child("link").value.toString()
+                    holder.value = temp
+                } else {
+                    isUrlReal.postValue(false)
+                    setToPrefs(ERR)
+                }
             }
 
             override fun onCancelled(error: DatabaseError) {
-                startIntentError()
+                isUrlReal.postValue(false)
+                setToPrefs(ERR)
             }
 
             override fun getLifecycle(): Lifecycle = lifecycleReg
@@ -104,28 +144,50 @@ class LoadingActivity : AppCompatActivity() {
                             webLink
                         )
 
-                        val prefs =
-                            getSharedPreferences(
-                                resources.getString(R.string.app_name),
-                                Context.MODE_PRIVATE
-                            )
-                        val editor = prefs.edit()
-
-                        editor.putString("sURL", webLink)
-                        editor.apply()
+                        setToPrefs(webLink)
+                        isUrlReal.postValue(true)
                     }
-
-                val intentWeb = Intent(
-                    this@LoadingActivity,
-                    WebActivity::class.java
-                )
-                startActivity(intentWeb)
             }
 
             override fun onFailure(call: Call, e: IOException) {
-                startIntentError()
+                isUrlReal.postValue(false)
+                setToPrefs(ERR)
             }
         })
+    }
+
+    private fun checkPrefs(): Boolean =
+        getPreferences(Context.MODE_PRIVATE).contains("sURL")
+
+    private fun setToPrefs(value: String) {
+        val prefs =
+            getSharedPreferences(
+                resources.getString(R.string.app_name),
+                Context.MODE_PRIVATE
+            )
+        val editor = prefs.edit()
+
+        editor.putString("sURL", value)
+        editor.apply()
+    }
+
+    private fun getFromPrefs(): String {
+        val sharedPref = getPreferences(Context.MODE_PRIVATE)
+        return sharedPref.getString("sURL", ERR) ?: ERR
+    }
+
+    private fun checkInternet(): Boolean {
+        val manager = this.getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            manager.getNetworkCapabilities(manager.activeNetwork)?.let { networkCapabilities ->
+                return networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        || networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            }
+        } else {
+            return manager.activeNetworkInfo?.isConnectedOrConnecting == true
+        }
+        return false
     }
 
     private fun startIntentError() {
@@ -134,6 +196,14 @@ class LoadingActivity : AppCompatActivity() {
             MainActivity::class.java
         )
         startActivity(intentOnError)
+    }
+
+    private fun startWeb() {
+        val intentWeb = Intent(
+            this@LoadingActivity,
+            WebActivity::class.java
+        )
+        startActivity(intentWeb)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -149,6 +219,7 @@ class LoadingActivity : AppCompatActivity() {
     companion object {
         const val COUNT_KEY = "COUNT_KEY"
         private var count = 1
+        private val ERR = "ERROR"
     }
 }
 
